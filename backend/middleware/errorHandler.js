@@ -18,6 +18,11 @@ function errorHandler(err, req, res, next) {
     return;
   }
 
+  if (err.code === 'SQLITE_CONSTRAINT') {
+    res.status(409).json({ error: 'That change conflicted with data already saved. Refresh and try again.' });
+    return;
+  }
+
   const status = Number(err.status) || 500;
   if (status >= 500) console.error(err);
   const body = {

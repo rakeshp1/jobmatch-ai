@@ -8,38 +8,26 @@ const { extractSummary, resumeBullets } = require('./textAnalysis');
 const { categoryForScore, categoryLabel } = require('./scoring');
 const { refreshDerived } = require('./resumeService');
 
-const BULLETS = {
-  Kafka: 'Owned Kafka topics and consumer jobs that moved operational events into the lake with replay, lag alerts, and backfill procedures.',
-  Terraform: 'Provisioned pipeline infrastructure with Terraform so warehouses, buckets, and orchestration roles stayed reviewable in version control.',
-  'Azure Data Factory': 'Built monitored ELT pipelines in Azure Data Factory, with retries and data-quality gates, so curated datasets landed before downstream jobs.',
-  'Azure Synapse': 'Modeled serving tables in Azure Synapse and tuned SQL pools for the KPI queries analysts run each morning.',
-  'Azure Databricks': 'Developed PySpark transformations on Azure Databricks and promoted notebooks through pull requests into scheduled production jobs.',
-  ADLS: 'Landed raw and curated zones in ADLS Gen2 with clear folder contracts, retention, and access for analytics consumers.',
-  'Azure DevOps': 'Shipped pipeline changes through Azure DevOps pipelines with build checks, environment approvals, and rollback notes.',
-  'Azure SQL': 'Published curated marts to Azure SQL and indexed the access paths used by operational reports.',
-  PyTorch: 'Trained and compared PyTorch models against a held-out set, then packaged the winning checkpoint for batch scoring.',
-  TensorFlow: 'Served a TensorFlow model behind a versioned endpoint and watched input drift before promoting a new release.',
-  Kubernetes: 'Ran scoring and data jobs on Kubernetes with resource limits, health checks, and a documented rollback.',
-  'Model Deployment': 'Took a model from notebook to model deployment, including a feature contract, a canary, and a rollback path.',
-  MLflow: 'Tracked parameters and metrics in MLflow so model promotion was a reviewable decision rather than a local notebook.',
-  'Feature Engineering': 'Built reusable feature engineering steps with training-serving consistency checks and documented definitions.',
-  'Feature Store': 'Registered offline and online features in a feature store so training sets and live scoring used the same definitions.',
-  'Machine Learning': 'Partnered with stakeholders to frame a machine learning problem, define the label, and report lift against a simple baseline.',
-  Statistics: 'Used statistical analysis and hypothesis testing to decide whether a metric move was real before recommending a product change.',
-  'A/B Testing': 'Designed A/B testing readouts with guardrail metrics, sample-size notes, and a clear ship-or-hold recommendation.',
-  'scikit-learn': 'Trained scikit-learn baselines, compared them with stronger models, and kept the simpler model when the lift was not worth the complexity.',
-  Experimentation: 'Ran online experiments end to end, from metric definition through analysis, and wrote the decision memo for partners.',
-  'Power BI': 'Published a Power BI model with certified measures so business users stopped rebuilding the same KPI logic.',
-  'Model Monitoring': 'Added model monitoring for volume, nulls, and score drift, with an on-call note for when to retrain.',
-  NLP: 'Shipped an NLP classification pass with an error review loop and a fallback for low-confidence predictions.',
-};
+const UNFILLED = /\[\[|describe the real workload|a result you can support|name only tools you have used/i;
+const MAX_WORKING_CHARS = 80000;
+
+function draftForSkill(skill) {
+  return `Used ${skill} to [[describe the real workload]]. Outcome: [[a result you can support]].`;
+}
+
+function wordingProblem(text) {
+  const wording = String(text || '').trim();
+  if (wording.length < 25 || wording.length > 500) {
+    return 'Each accepted line must be 25 to 500 characters and describe experience you can support.';
+  }
+  if (UNFILLED.test(wording)) {
+    return 'Replace the draft placeholders with experience you can support, or skip that suggestion.';
+  }
+  return '';
+}
 
 function slug(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-function bulletFor(skill) {
-  return BULLETS[skill] || `Applied ${skill} on a production workload, wrote down the tradeoffs, and measured the change in reliability or delivery time.`;
 }
 
 function closestBullet(resumeText, skill) {
@@ -86,35 +74,35 @@ function buildRecommendations(resumeText, detail) {
   const focus = [...detail.missingSkills.slice(0, 3), ...detail.missingKeywords.slice(0, 2)];
 
   if (focus.length) {
-    const improved = summary
-      ? `${summary} Recent work to emphasize for this role: ${focus.join(', ')}.`
-      : `Hands-on experience to foreground: ${focus.join(', ')}, with ownership from design through production.`;
-    const suggestedBullet = `Delivered production outcomes using ${focus.slice(0, 3).join(', ')}, and wrote the results up so partners could trace the impact.`;
+    const guidance = `Missing from the resume: ${focus.join(', ')}. Add a line only for themes you have actually used. Do not invent a project, metric, or tool.`;
+    const draft = '[[Name only tools you have used]] and the outcome [[a result you can support]].';
     recommendations.push({
       id: 'summary-emphasis',
-      title: 'Name the missing themes in your summary',
+      title: 'Mention a missing theme only if you have done the work',
       currentWording: summary || 'No summary section was detected.',
-      improvedWording: improved,
-      suggestedBullet,
+      guidance,
+      improvedWording: guidance,
+      suggestedBullet: draft,
+      draft,
       missingKeywords: detail.missingKeywords.slice(0, 4),
       skillsToEmphasize: detail.missingSkills.slice(0, 3),
-      insertText: `${improved}\n${suggestedBullet}`,
     });
   }
 
   detail.missingSkills.slice(0, 4).forEach((skill) => {
-    const currentWording = closestBullet(resumeText, skill);
-    const improvedWording = bulletFor(skill);
+    const guidance = `If you have used ${skill}, describe the workload and a real outcome in your own words. Skip this if you have not used ${skill}.`;
+    const draft = draftForSkill(skill);
     const relatedKeywords = detail.missingKeywords.filter((keyword) => keyword.toLowerCase().includes(skill.toLowerCase().split(' ')[0].toLowerCase())).slice(0, 3);
     recommendations.push({
       id: `skill-${slug(skill)}`,
-      title: `Show ${skill} with a concrete outcome`,
-      currentWording,
-      improvedWording,
-      suggestedBullet: improvedWording,
+      title: `Add ${skill} only if you have used it`,
+      currentWording: closestBullet(resumeText, skill),
+      guidance,
+      improvedWording: guidance,
+      suggestedBullet: draft,
+      draft,
       missingKeywords: relatedKeywords,
       skillsToEmphasize: [skill],
-      insertText: improvedWording,
     });
   });
 
@@ -175,34 +163,63 @@ function getPlan(jobId) {
   };
 }
 
-function acceptRecommendations(jobId, ids) {
-  if (!Array.isArray(ids) || !ids.length) {
-    throw new HttpError(400, 'Select at least one recommendation to accept.');
+function readAcceptance(body) {
+  const source = body && typeof body === 'object' ? body : {};
+  if (Array.isArray(source.recommendationIds)) {
+    throw new HttpError(400, 'Edit each draft before accepting. Placeholder wording is not added to the resume.');
   }
-  const uniqueIds = [...new Set(ids.map((id) => String(id)))];
-  if (uniqueIds.length > 20) throw new HttpError(400, 'Too many recommendations were submitted.');
+  if (!Array.isArray(source.recommendations)) return [];
+  return source.recommendations.map((item) => ({
+    id: String(item?.id || '').trim(),
+    wording: String(item?.wording || '').trim(),
+  }));
+}
+
+function acceptRecommendations(jobId, body) {
+  const items = readAcceptance(body);
+  if (!items.length) throw new HttpError(400, 'Select at least one recommendation and replace the draft with wording you can support.');
+  if (items.length > 5) throw new HttpError(400, 'Too many recommendations were submitted.');
+  const uniqueIds = new Set(items.map((item) => item.id));
+  if (uniqueIds.size !== items.length) throw new HttpError(400, 'Each recommendation can be accepted once.');
 
   const plan = getPlan(jobId);
   const available = new Map(plan.recommendations.map((item) => [item.id, item]));
-  const chosen = uniqueIds.map((id) => {
-    const recommendation = available.get(id);
+  const chosen = items.map((item) => {
+    const recommendation = available.get(item.id);
     if (!recommendation) throw new HttpError(400, 'One of those recommendations is no longer available. Refresh and try again.');
-    return recommendation;
+    const problem = wordingProblem(item.wording);
+    if (problem) throw new HttpError(400, problem);
+    return { ...recommendation, wording: item.wording };
   });
 
   const resume = getResume();
   const now = new Date().toISOString();
-  const nextText = appendTailoring(resume.working_text, chosen.map((item) => item.insertText));
+  const nextText = appendTailoring(resume.working_text, chosen.map((item) => item.wording));
+  if (nextText.length > MAX_WORKING_CHARS) {
+    throw new HttpError(400, 'The working resume is too long to add more wording.');
+  }
   const transaction = db.transaction(() => {
     db.prepare('UPDATE resumes SET working_text = ? WHERE id = ?').run(nextText, resume.id);
-    chosen.forEach((item) => insertAccepted({ jobId, recommendationId: item.id, wording: item.insertText, createdAt: now }));
+    chosen.forEach((item) => insertAccepted({
+      jobId,
+      recommendationId: item.id,
+      wording: item.wording,
+      createdAt: now,
+    }));
   });
-  transaction();
+  try {
+    transaction();
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT') {
+      throw new HttpError(409, 'One of those recommendations was already accepted. Refresh and try again.');
+    }
+    throw error;
+  }
   refreshDerived(resume.id);
 
   return {
     accepted: chosen.map((item) => item.id),
-    message: `Accepted ${chosen.length} recommendation${chosen.length === 1 ? '' : 's'}. Re-run match analysis to refresh the score.`,
+    message: `Saved ${chosen.length} line${chosen.length === 1 ? '' : 's'} you wrote. Re-run match analysis to refresh the estimate. JobMatch does not check that the lines are true, and the score does not predict an interview or an offer.`,
     plan: getPlan(jobId),
   };
 }

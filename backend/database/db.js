@@ -5,9 +5,15 @@ const Database = require('better-sqlite3');
 const dataDir = path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, 'jobmatch.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let db;
+try {
+  db = new Database(path.join(dataDir, 'jobmatch.db'));
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+} catch (error) {
+  console.error(`JobMatch could not open its database (${error.code || 'error'}).`);
+  process.exit(1);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS resumes (

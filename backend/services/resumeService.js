@@ -97,11 +97,25 @@ async function ingestStoredPdf({ storedName, originalName }) {
   return getResume();
 }
 
+function displayName(name) {
+  const base = path.basename(String(name || 'resume.pdf'))
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>:"\\|?*]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180);
+  if (!base) return 'resume.pdf';
+  return base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+}
+
 async function saveUpload(file) {
   if (!file) throw new HttpError(400, 'Choose a PDF resume to upload.');
+  if (file.filename !== path.basename(file.filename) || file.filename.includes('..')) {
+    throw new HttpError(400, 'Could not store that file.');
+  }
   return ingestStoredPdf({
     storedName: file.filename,
-    originalName: path.basename(file.originalname || 'resume.pdf'),
+    originalName: displayName(file.originalname),
   });
 }
 

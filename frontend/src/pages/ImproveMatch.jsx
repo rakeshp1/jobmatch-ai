@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Disclaimer, ErrorBanner, LoadingState, PageHeader } from '../components/Feedback';
 import { SkillChips } from '../components/SkillChips';
 import { JobsApi, errorMessage } from '../services/api';
+import { draftWordingError } from '../utils/files';
 import { CATEGORY_LABEL } from '../utils/format';
 
 export function ImproveMatch() {
@@ -12,14 +13,27 @@ export function ImproveMatch() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [selected, setSelected] = useState({});
+  const [drafts, setDrafts] = useState({});
+  const [draftErrors, setDraftErrors] = useState({});
   const [busy, setBusy] = useState('');
   const [rerun, setRerun] = useState(null);
+  const lock = useRef(false);
+
+  function rememberDrafts(nextPlan) {
+    const next = {};
+    (nextPlan?.recommendations || []).forEach((item) => {
+      next[item.id] = item.draft || item.suggestedBullet || '';
+    });
+    setDrafts(next);
+    setDraftErrors({});
+  }
 
   async function load() {
     setError('');
     try {
       const data = await JobsApi.improve(id);
       setPlan(data.plan);
+      rememberDrafts(data.plan);
     } catch (err) {
       setError(errorMessage(err));
       setPlan(null);
@@ -36,22 +50,35 @@ export function ImproveMatch() {
   const chosen = Object.keys(selected).filter((key) => selected[key]);
 
   async function accept() {
+    if (lock.current) return;
+    const nextErrors = {};
+    chosen.forEach((key) => {
+      const problem = draftWordingError(drafts[key]);
+      if (problem) nextErrors[key] = problem;
+    });
+    setDraftErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    lock.current = true;
     setBusy('accept');
     setNotice('');
     setError('');
     try {
-      const result = await JobsApi.accept(id, chosen);
+      const result = await JobsApi.accept(id, chosen.map((key) => ({ id: key, wording: drafts[key].trim() })));
       setPlan(result.plan);
+      rememberDrafts(result.plan);
       setSelected({});
       setNotice(result.message);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      lock.current = false;
       setBusy('');
     }
   }
 
   async function rerunAnalysis() {
+    if (lock.current) return;
+    lock.current = true;
     setBusy('score');
     setNotice('');
     setError('');
@@ -61,11 +88,12 @@ export function ImproveMatch() {
       setRerun({ ...result, remembered: previous });
       await load();
       setNotice(result.becameReady
-        ? `Updated match is ${result.job.matchScore}%. This job moved to Ready to Apply.`
-        : `Updated match is ${result.job.matchScore}%.`);
+        ? `Updated overlap estimate is ${result.job.matchScore}%. The status is Ready to Apply. That does not predict an interview or an offer.`
+        : `Updated overlap estimate is ${result.job.matchScore}%.`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      lock.current = false;
       setBusy('');
     }
   }
@@ -75,7 +103,7 @@ export function ImproveMatch() {
       <PageHeader
         eyebrow="Improve match"
         title={plan ? `${plan.title} at ${plan.company}` : 'Improve match'}
-        subtitle="Compare the current wording with recommended lines. Accepting adds them to the working resume. Re-run the match to refresh the percentage."
+        subtitle="Suggestions are drafts, not claims about your career. Edit a line so it is true, then accept it. Re-run the match to refresh the estimate. The score does not predict an interview or an offer."
         actions={plan && (
           <>
             <Link className="btn btn-ghost" to={`/jobs/${plan.jobId}`}>View analysis</Link>
@@ -89,7 +117,7 @@ export function ImproveMatch() {
       {notice && <div className="banner banner-ok" role="status">{notice}</div>}
       {rerun?.becameReady && (
         <div className="banner banner-ok">
-          <span>90% or above. This role is in Ready to Apply.</span>
+          <span>The overlap estimate is 90% or above, so this role is in Ready to Apply. That is not a hiring prediction.</span>
           <Link className="btn btn-small" to="/applications?status=ready_to_apply">Open applications</Link>
         </div>
       )}
@@ -136,22 +164,31 @@ export function ImproveMatch() {
                 <input
                   type="checkbox"
                   checked={Boolean(selected[rec.id])}
+                  disabled={Boolean(busy)}
                   onChange={(event) => setSelected((current) => ({ ...current, [rec.id]: event.target.checked }))}
                 />
                 <span>
                   <strong>{rec.title}</strong>
                 </span>
               </label>
+              <p className="form-hint">{rec.guidance || rec.improvedWording}</p>
               <div className="compare">
                 <div className="wording">
-                  <h3>Current resume wording</h3>
+                  <h3>Closest wording already on the resume</h3>
                   <p>{rec.currentWording}</p>
                 </div>
                 <div className="wording wording-new">
-                  <h3>AI-recommended improved wording</h3>
-                  <p>{rec.improvedWording}</p>
-                  <h3 style={{ marginTop: 10 }}>Suggested bullet</h3>
-                  <p>• {rec.suggestedBullet}</p>
+                  <label htmlFor={`draft-${rec.id}`}>Draft — edit before accepting</label>
+                  <textarea
+                    id={`draft-${rec.id}`}
+                    className="draft-input"
+                    value={drafts[rec.id] || ''}
+                    maxLength={500}
+                    aria-invalid={Boolean(draftErrors[rec.id])}
+                    aria-describedby={draftErrors[rec.id] ? `draft-${rec.id}-error` : undefined}
+                    onChange={(event) => setDrafts((current) => ({ ...current, [rec.id]: event.target.value }))}
+                  />
+                  {draftErrors[rec.id] && <p id={`draft-${rec.id}-error`} className="field-error" role="alert">{draftErrors[rec.id]}</p>}
                 </div>
               </div>
               <div className="detail-grid">

@@ -41,7 +41,7 @@ export const JobsApi = {
   analyze: (id) => api.post(`/jobs/${id}/analyze`).then((response) => response.data),
   analyzeAll: () => api.post('/jobs/analyze-all').then((response) => response.data),
   improve: (id) => api.get(`/jobs/${id}/improve`).then((response) => response.data),
-  accept: (id, recommendationIds) => api.post(`/jobs/${id}/improve/accept`, { recommendationIds }).then((response) => response.data),
+  accept: (id, recommendations) => api.post(`/jobs/${id}/improve/accept`, { recommendations }).then((response) => response.data),
   setStatus: (id, status) => api.patch(`/jobs/${id}/status`, { status }).then((response) => response.data),
 };
 

@@ -11,8 +11,8 @@ It is a workflow, not a chatbot. Nothing is submitted to an employer. A score is
 - Score every job against the working resume.
 - Bands: 90–100% Ready to Apply, 70–89% Resume Optimization Recommended, below 70% Significant Skill Gap.
 - For each job: match percentage, matching skills, missing skills, missing keywords, experience gaps, recommendations, and a short explanation.
-- Improve Match for roles under 90%: current wording, recommended wording, missing keywords, skills to emphasize, and suggested bullets.
-- Accept selected recommendations, then re-run the match. A new score of 90% or higher moves the job to Ready to Apply.
+- Improve Match for roles under 90% shows the closest current wording, missing keywords, skills you might emphasize, and a draft you must edit.
+- Accept only wording you rewrite so it is true. Placeholder drafts are rejected. Re-run the match afterward. A new estimate of 90% or higher moves the job to Ready to Apply. That status is an overlap band, not a prediction of an interview or an offer.
 - Apply opens the saved URL in a new tab, or you mark the job Applied yourself.
 - Statuses: Saved, Needs Improvement, Ready to Apply, Applied.
 - Load four sample data roles on demand. They are not inserted until you click **Load sample jobs**.
@@ -60,7 +60,7 @@ With no API key, the local matcher scores three signals:
 
 The final percentage is a weighted blend of those signals, clamped to 0–100. The same resume produces different scores when the job descriptions emphasize different skills. Against the bundled data-engineer sample, the four sample jobs land in different bands: one ready to apply, one optimization, and two skill gaps.
 
-Accepting a suggestion appends that wording to a working copy of the resume. The original PDF text is kept. The next match run sees the new words, so the score can move. Reset to PDF text on the Resume page throws those additions away.
+Accepting a suggestion appends the wording you edited to a working copy of the resume. The app does not invent employers, metrics, or accomplishments, and it does not check that the line is true. The original PDF text is kept. The next match run sees the words you added, so the estimate can move. Reset to PDF text on the Resume page throws those additions away.
 
 ## Installation
 

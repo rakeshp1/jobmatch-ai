@@ -33,15 +33,24 @@ function itemsToText(items) {
   return rows.map((row) => row.text.replace(/[ \t]+/g, ' ').trimEnd()).join('\n');
 }
 
+const MAX_PAGES = 25;
+const MAX_CHARS = 100000;
+
 async function extractPdfText(buffer) {
+  let document;
   try {
     const pdfjs = await loadPdfjs();
-    const document = await pdfjs.getDocument({
+    document = await pdfjs.getDocument({
       data: new Uint8Array(buffer),
       disableWorker: true,
+      isEvalSupported: false,
       standardFontDataUrl: standardFontUrl(),
       useSystemFonts: true,
     }).promise;
+
+    if (document.numPages > MAX_PAGES) {
+      throw new HttpError(400, `PDF must be ${MAX_PAGES} pages or fewer.`);
+    }
 
     const pages = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
@@ -49,10 +58,19 @@ async function extractPdfText(buffer) {
       const content = await page.getTextContent();
       pages.push(itemsToText(content.items));
     }
-    return pages.join('\n').replace(/\u0000/g, '').trim();
+    const text = pages.join('\n').replace(/\u0000/g, '').trim();
+    if (text.length > MAX_CHARS) {
+      throw new HttpError(400, 'This PDF has too much text to score. Export a shorter resume.');
+    }
+    return text;
   } catch (error) {
+    if (error instanceof HttpError || error.status) throw error;
     console.warn(error.message || error);
     throw new HttpError(400, 'Could not read this PDF. Export it again as a text-based PDF and retry.');
+  } finally {
+    if (document) {
+      try { await document.destroy(); } catch { /* already closed */ }
+    }
   }
 }
 

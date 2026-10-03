@@ -50,11 +50,12 @@ function phraseIn(text, phrase) {
 }
 
 function sectionMode(line) {
-  const compact = line.trim().toLowerCase();
-  if (!compact || compact.length > 80) return null;
-  if (/preferred|nice to have|bonus|plus if|good to have/.test(compact)) return 'preferred';
-  if (/requirement|qualification|what you(?:'|’)ll bring|what you bring|must have|required|we(?:'|’)re looking/.test(compact)) return 'required';
-  if (/responsibilit|what you(?:'|’)ll do|what you will do|the role|about the role|you will/.test(compact)) return 'body';
+  const raw = line.trim();
+  const compact = raw.toLowerCase().replace(/[:.\-–—]+$/g, '').trim();
+  if (!compact || compact.length > 60 || /^[-•*]/.test(raw)) return null;
+  if (/^(preferred|nice to have|bonus|plus if|good to have)\b/.test(compact)) return 'preferred';
+  if (/^(requirements?|qualifications?|what you(?:'|’)ll bring|what you bring|must have|required skills|we(?:'|’)re looking)\b/.test(compact)) return 'required';
+  if (/^(responsibilities|responsibility|what you(?:'|’)ll do|what you will do|the role|about the role)\b/.test(compact)) return 'body';
   return null;
 }
 

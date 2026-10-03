@@ -25,8 +25,52 @@ export function validateJob(values) {
   if (description.length < 40 || description.length > 20000) {
     errors.description = 'Job description must be between 40 and 20,000 characters.';
   }
-  if (url && !/^https?:\/\/.+/i.test(url)) {
+  if (url.length > 2000) {
+    errors.applicationUrl = 'Application URL must be 2,000 characters or fewer.';
+  } else if (url && !/^https?:\/\/.+/i.test(url)) {
     errors.applicationUrl = 'Application URL must start with http:// or https://.';
+  } else if (url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        errors.applicationUrl = 'Application URL must start with http:// or https://.';
+      } else if (parsed.username || parsed.password) {
+        errors.applicationUrl = 'Application URL cannot include a username or password.';
+      }
+    } catch {
+      errors.applicationUrl = 'Application URL is not a valid link.';
+    }
   }
   return errors;
+}
+
+const UNFILLED_DRAFT = /\[\[|describe the real workload|a result you can support|name only tools you have used/i;
+
+export function draftWordingError(text) {
+  const wording = String(text || '').trim();
+  if (wording.length < 25 || wording.length > 500) {
+    return 'Write 25 to 500 characters of experience you can support.';
+  }
+  if (UNFILLED_DRAFT.test(wording)) {
+    return 'Replace the [[placeholders]] with real experience, or leave this suggestion unselected.';
+  }
+  return '';
+}
+
+export function openHttpUrl(url) {
+  let parsed;
+  try {
+    parsed = new URL(String(url || ''));
+  } catch {
+    return 'That application link could not be opened.';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return 'Application links must start with http:// or https://.';
+  }
+  if (parsed.username || parsed.password) {
+    return 'That application link includes a username or password and was not opened.';
+  }
+  const opened = window.open(parsed.toString(), '_blank', 'noopener,noreferrer');
+  if (!opened) return 'The browser blocked the new tab. Allow pop-ups for this site and try again.';
+  return '';
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { EmptyState, ErrorBanner, LoadingState, PageHeader } from '../components/Feedback';
+import { Disclaimer, EmptyState, ErrorBanner, LoadingState, PageHeader } from '../components/Feedback';
 import { JobCard } from '../components/JobCard';
 import { LoadSamplesButton } from '../components/LoadSamplesButton';
 import { useJobs } from '../hooks/useJobs';
@@ -66,11 +66,12 @@ export function JobMatches() {
           </>
         )}
       />
+      <Disclaimer />
       <ErrorBanner message={error || actionError} onRetry={refresh} />
       {notice && <div className="banner banner-ok" role="status">{notice}</div>}
       <div className="toolbar">
         {FILTERS.map((item) => (
-          <button key={item.id} className={filter === item.id ? 'btn btn-small' : 'btn btn-small btn-ghost'} type="button" onClick={() => setFilter(item.id)}>
+          <button key={item.id} className={filter === item.id ? 'btn btn-small' : 'btn btn-small btn-ghost'} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>
             {item.label}
           </button>
         ))}

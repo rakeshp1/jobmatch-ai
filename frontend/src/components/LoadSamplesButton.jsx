@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { JobsApi, errorMessage } from '../services/api';
 
 export function LoadSamplesButton({ onLoaded, variant = 'secondary' }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const lock = useRef(false);
 
   async function load() {
+    if (lock.current) return;
+    lock.current = true;
     setBusy(true);
     setError('');
     setMessage('');
@@ -20,6 +23,7 @@ export function LoadSamplesButton({ onLoaded, variant = 'secondary' }) {
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   }
@@ -29,8 +33,8 @@ export function LoadSamplesButton({ onLoaded, variant = 'secondary' }) {
       <button className={`btn btn-${variant}`} type="button" onClick={load} disabled={busy}>
         {busy ? 'Loading samples…' : 'Load sample jobs'}
       </button>
-      {message && <p className="form-hint">{message}</p>}
-      {error && <p className="field-error">{error}</p>}
+      {message && <p className="form-hint" role="status">{message}</p>}
+      {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );
 }

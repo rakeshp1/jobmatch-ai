@@ -18,11 +18,20 @@ export function Layout() {
     setOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    function onKey(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
     <div className="shell">
       <a className="skip" href="#main">Skip to content</a>
       {open && <button className="backdrop" aria-label="Close menu" onClick={() => setOpen(false)} />}
-      <aside className={open ? 'sidebar open' : 'sidebar'}>
+      <aside id="app-sidebar" className={open ? 'sidebar open' : 'sidebar'}>
         <div className="brand">
           <div className="brand-mark">J</div>
           <div>
@@ -43,15 +52,15 @@ export function Layout() {
         </nav>
         <p className="sidebar-foot">Scores estimate wording overlap. They are not a promise of an interview.</p>
       </aside>
-      <div className="main" id="main">
+      <main className="main" id="main">
         <div className="topbar">
           <strong>JobMatch AI</strong>
-          <button className="menu-btn" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-            Menu
+          <button className="menu-btn" type="button" aria-expanded={open} aria-controls="app-sidebar" onClick={() => setOpen((value) => !value)}>
+            {open ? 'Close menu' : 'Menu'}
           </button>
         </div>
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }

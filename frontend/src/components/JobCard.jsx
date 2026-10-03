@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { JobsApi, errorMessage } from '../services/api';
+import { openHttpUrl } from '../utils/files';
 import { CATEGORY_LABEL, STATUS_LABEL, categoryOf, initials } from '../utils/format';
 import { SkillChips } from './SkillChips';
 
@@ -36,7 +37,8 @@ export function JobCard({ job, onChange, showManage = false }) {
   }
 
   function openApplication() {
-    if (job.applicationUrl) window.open(job.applicationUrl, '_blank', 'noopener,noreferrer');
+    const problem = openHttpUrl(job.applicationUrl);
+    if (problem) setError(problem);
   }
 
   const ready = job.matchScore != null && job.matchScore >= 90 && job.status !== 'applied';
@@ -66,7 +68,7 @@ export function JobCard({ job, onChange, showManage = false }) {
       <SkillChips label="Missing skills" items={job.missingSkills} tone="miss" />
       {error && <p className="field-error">{error}</p>}
       <div className="card-actions">
-        <Link className="btn btn-small" to={`/jobs/${job.id}`}>View Analysis</Link>
+        <Link className="btn btn-small" to={`/jobs/${job.id}`} aria-label={`View analysis for ${job.title}`}>View Analysis</Link>
         {job.matchScore == null && (
           <button className="btn btn-small btn-secondary" type="button" onClick={runMatch} disabled={Boolean(busy)}>
             {busy === 'match' ? 'Scoring…' : 'Run match'}
@@ -76,10 +78,10 @@ export function JobCard({ job, onChange, showManage = false }) {
           <Link className="btn btn-small btn-secondary" to={`/jobs/${job.id}/improve`}>Improve Match</Link>
         )}
         {ready && job.applicationUrl && (
-          <button className="btn btn-small btn-secondary" type="button" onClick={openApplication}>Apply</button>
+          <button className="btn btn-small btn-secondary" type="button" onClick={openApplication} aria-label={`Open application for ${job.title}`}>Apply</button>
         )}
         {ready && (
-          <button className="btn btn-small btn-ghost" type="button" onClick={markApplied} disabled={Boolean(busy)}>
+          <button className="btn btn-small btn-ghost" type="button" onClick={markApplied} disabled={Boolean(busy)} aria-label={`Mark ${job.title} as applied`}>
             {busy === 'apply' ? 'Saving…' : 'Mark applied'}
           </button>
         )}

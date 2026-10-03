@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ErrorBanner, LoadingState, PageHeader } from '../components/Feedback';
+import { Disclaimer, EmptyState, ErrorBanner, LoadingState, PageHeader } from '../components/Feedback';
 import { useJobs } from '../hooks/useJobs';
 import { JobsApi, errorMessage } from '../services/api';
+import { openHttpUrl } from '../utils/files';
 import { STATUS_LABEL } from '../utils/format';
 
 const COLUMNS = [
@@ -47,9 +48,13 @@ export function Applications() {
         title="Track what you will send"
         subtitle="Statuses are Saved, Needs Improvement, Ready to Apply, and Applied. Marking applied does not submit the application anywhere."
       />
+      <Disclaimer />
       <ErrorBanner message={error || actionError} onRetry={refresh} />
       {loading && <LoadingState label="Loading applications…" />}
-      {!loading && (
+      {!loading && jobs.length === 0 && (
+        <EmptyState title="No applications yet" body="Add a job or load the sample roles. Marking a job applied only updates your board." />
+      )}
+      {!loading && jobs.length > 0 && (
         <div className="board">
           {COLUMNS.map((column) => {
             const items = jobs.filter((job) => job.status === column.status);
@@ -66,12 +71,12 @@ export function Applications() {
                     <p className="company">{job.company}</p>
                     <p className="form-hint">{job.matchScore == null ? 'Not scored' : `${job.matchScore}% · ${STATUS_LABEL[job.status]}`}</p>
                     <div className="card-actions">
-                      <Link className="btn btn-small btn-ghost" to={`/jobs/${job.id}`}>View</Link>
+                      <Link className="btn btn-small btn-ghost" to={`/jobs/${job.id}`} aria-label={`View ${job.title}`}>View</Link>
                       {job.matchScore != null && job.matchScore < 90 && (
                         <Link className="btn btn-small btn-ghost" to={`/jobs/${job.id}/improve`}>Improve</Link>
                       )}
                       {job.status !== 'applied' && (
-                        <button className="btn btn-small" type="button" disabled={busyId === job.id} onClick={() => setStatus(job, 'applied')}>
+                        <button className="btn btn-small" type="button" disabled={busyId === job.id} onClick={() => setStatus(job, 'applied')} aria-label={`Mark ${job.title} as applied`}>
                           {busyId === job.id ? 'Saving…' : 'Mark applied'}
                         </button>
                       )}
@@ -81,8 +86,11 @@ export function Applications() {
                         </button>
                       )}
                       {job.status === 'ready_to_apply' && job.applicationUrl && (
-                        <button className="btn btn-small btn-secondary" type="button" onClick={() => window.open(job.applicationUrl, '_blank', 'noopener,noreferrer')}>
-                          Apply
+                        <button className="btn btn-small btn-secondary" type="button" onClick={() => {
+                          const problem = openHttpUrl(job.applicationUrl);
+                          if (problem) setActionError(problem);
+                        }} aria-label={`Open application for ${job.title}`}>
+                          Open application
                         </button>
                       )}
                     </div>

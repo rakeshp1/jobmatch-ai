@@ -4,8 +4,10 @@ const jobService = require('../services/jobService');
 const improveService = require('../services/improveService');
 
 function parseId(value) {
-  if (!/^\d+$/.test(String(value))) throw new HttpError(400, 'Invalid job id.');
-  return Number(value);
+  if (!/^[1-9]\d{0,14}$/.test(String(value))) throw new HttpError(400, 'Invalid job id.');
+  const id = Number(value);
+  if (!Number.isSafeInteger(id)) throw new HttpError(400, 'Invalid job id.');
+  return id;
 }
 
 const list = asyncHandler(async (req, res) => {
@@ -55,7 +57,7 @@ const improve = asyncHandler(async (req, res) => {
 });
 
 const accept = asyncHandler(async (req, res) => {
-  const result = improveService.acceptRecommendations(parseId(req.params.id), req.body?.recommendationIds);
+  const result = improveService.acceptRecommendations(parseId(req.params.id), req.body);
   res.json(result);
 });
 

@@ -1,11 +1,18 @@
 const { HttpError } = require('../middleware/httpError');
 
+function cleanText(value) {
+  return String(value ?? '')
+    .replace(/\u0000/g, '')
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim();
+}
+
 function validateJobPayload(body) {
-  const source = body || {};
-  const title = String(source.title || '').trim();
-  const company = String(source.company || '').trim();
-  const description = String(source.description || '').trim();
-  const urlRaw = source.applicationUrl == null ? '' : String(source.applicationUrl).trim();
+  const source = body && typeof body === 'object' ? body : {};
+  const title = cleanText(source.title);
+  const company = cleanText(source.company);
+  const description = cleanText(source.description);
+  const urlRaw = cleanText(source.applicationUrl);
   const errors = [];
 
   if (title.length < 2 || title.length > 140) errors.push('Job title must be between 2 and 140 characters.');
@@ -16,13 +23,17 @@ function validateJobPayload(body) {
 
   let applicationUrl = null;
   if (urlRaw) {
-    if (!/^https?:\/\//i.test(urlRaw)) {
+    if (urlRaw.length > 2000) {
+      errors.push('Application URL must be 2,000 characters or fewer.');
+    } else if (!/^https?:\/\//i.test(urlRaw)) {
       errors.push('Application URL must start with http:// or https://.');
     } else {
       try {
         const parsed = new URL(urlRaw);
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
           errors.push('Application URL must start with http:// or https://.');
+        } else if (parsed.username || parsed.password) {
+          errors.push('Application URL cannot include a username or password.');
         } else {
           applicationUrl = parsed.toString();
         }

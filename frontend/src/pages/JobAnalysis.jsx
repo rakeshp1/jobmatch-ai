@@ -5,6 +5,7 @@ import { Disclaimer, ErrorBanner, LoadingState, PageHeader } from '../components
 import { ScoreRing } from '../components/ScoreRing';
 import { SkillChips } from '../components/SkillChips';
 import { JobsApi, errorMessage } from '../services/api';
+import { openHttpUrl } from '../utils/files';
 import { CATEGORY_LABEL, STATUS_LABEL, categoryOf } from '../utils/format';
 
 export function JobAnalysis() {
@@ -43,8 +44,8 @@ export function JobAnalysis() {
       setJob(result.job);
       const moved = result.previousScore != null ? ` Score moved from ${result.previousScore}% to ${result.job.matchScore}%.` : '';
       setNotice(result.becameReady
-        ? `This role is now Ready to Apply.${moved}`
-        : `Match updated.${moved}`);
+        ? `The overlap estimate is now in the Ready to Apply band.${moved} That does not predict an interview or an offer.`
+        : `Match estimate updated.${moved}`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -93,7 +94,7 @@ export function JobAnalysis() {
             <button className="btn btn-secondary" type="button" onClick={rerun} disabled={Boolean(busy)}>
               {busy === 'score' ? 'Scoring…' : 'Re-run match'}
             </button>
-            <button className="btn btn-danger" type="button" onClick={() => setConfirmDelete(true)}>Delete</button>
+            <button className="btn btn-danger" type="button" onClick={() => setConfirmDelete(true)} disabled={Boolean(busy)}>Delete</button>
           </>
         )}
       />
@@ -116,8 +117,11 @@ export function JobAnalysis() {
                   <Link className="btn btn-small" to={`/jobs/${job.id}/improve`}>Improve Match</Link>
                 )}
                 {job.matchScore != null && job.matchScore >= 90 && job.applicationUrl && (
-                  <button className="btn btn-small" type="button" onClick={() => window.open(job.applicationUrl, '_blank', 'noopener,noreferrer')}>
-                    Apply
+                  <button className="btn btn-small" type="button" onClick={() => {
+                    const problem = openHttpUrl(job.applicationUrl);
+                    if (problem) setError(problem);
+                  }}>
+                    Open application
                   </button>
                 )}
                 {job.status !== 'applied' && job.matchScore != null && job.matchScore >= 90 && (

@@ -31,7 +31,7 @@ export function Resume() {
     try {
       const data = await ResumeApi.upload(file);
       setResume(data.resume);
-      setNotice(`Extracted text from ${data.resume.originalName}. Match scores were refreshed for saved jobs.`);
+      setNotice(data.scoreWarning || `Extracted text from ${data.resume.originalName}. Match scores were refreshed for saved jobs.`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -46,7 +46,7 @@ export function Resume() {
     try {
       const data = await ResumeApi.useSample();
       setResume(data.resume);
-      setNotice('Sample data engineer resume loaded. Saved jobs were scored against it.');
+      setNotice(data.scoreWarning || 'Sample data engineer resume loaded. Saved jobs were scored against it.');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -73,7 +73,7 @@ export function Resume() {
     try {
       const data = await ResumeApi.resetTailoring();
       setResume(data.resume);
-      setNotice('Working resume reset to the original PDF text, and matches were re-run.');
+      setNotice(data.scoreWarning || 'Working resume reset to the original PDF text, and matches were re-run.');
       setConfirm(null);
     } catch (err) {
       setError(errorMessage(err));

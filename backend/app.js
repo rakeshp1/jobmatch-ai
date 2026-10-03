@@ -4,6 +4,7 @@ const routes = require('./routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
+app.disable('x-powered-by');
 
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://127.0.0.1:43123,http://localhost:43123')
   .split(',')
@@ -12,6 +13,14 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://127.0.0.1:43123,http:
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('X-Frame-Options', 'DENY');
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin)) {
+    res.status(403).json({ error: 'This origin is not allowed to call the API.' });
+    return;
+  }
   next();
 });
 
