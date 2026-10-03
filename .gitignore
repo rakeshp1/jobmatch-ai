@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# SQLite databases and uploaded resumes stay on the machine
+backend/data/*
+!backend/data/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
