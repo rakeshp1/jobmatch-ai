@@ -133,7 +133,9 @@ One process serves the built UI and the API. `npm run build` in `frontend` write
 
 The container image is the repo-root `Dockerfile`. It builds the frontend, installs the backend, and runs `node server.js` as a non-root user with `PORT=8080`. SQLite goes in `/app/data` and uploads in `/app/uploads`. Both directories are on the container disk.
 
-ECS Express Mode (the `*.ecs.us-east-1.on.aws` hostname used for this class of app) replaces that disk when a task is replaced, redeployed, or scaled. The SQLite database and uploaded PDFs are not durable. They are lost on the next new task. This project keeps SQLite on purpose and does not use RDS.
+The live service is ECS Express Mode in us-east-1: [https://jo-8a48284f5e644d7d9363bb09fbf01662.ecs.us-east-1.on.aws](https://jo-8a48284f5e644d7d9363bb09fbf01662.ecs.us-east-1.on.aws). Service name `jobmatch-ai` on cluster `default`.
+
+That hostname replaces the container disk when a task is replaced, redeployed, or scaled. The SQLite database and uploaded PDFs are not durable. They are lost on the next new task. This project keeps SQLite on purpose and does not use RDS.
 
 Nothing in the app submits an application to an employer. Apply only opens a saved URL or records that you marked the job applied.
 
