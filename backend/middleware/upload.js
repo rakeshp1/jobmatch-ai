@@ -4,7 +4,9 @@ const multer = require('multer');
 const { HttpError } = require('./httpError');
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const uploadsDir = path.join(__dirname, '..', 'uploads');
+const uploadsDir = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({

@@ -1,0 +1,12 @@
+{
+  "name": "jobmatch-ai",
+  "private": true,
+  "description": "JobMatch AI — resume comparison and job tracking",
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

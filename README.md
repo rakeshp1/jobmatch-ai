@@ -86,9 +86,11 @@ cp .env.example .env
 
 | Variable | Role |
 | --- | --- |
-| `PORT` | API port. Default `43124`. |
-| `CORS_ORIGIN` | Browser origins allowed to call the API. |
-| `VITE_API_BASE_URL` | Optional. Frontend defaults to `http://127.0.0.1:43124/api`. Vite reads repo-root env files. |
+| `PORT` | Port the server listens on. Local default `43124`. The production container sets `8080`. |
+| `CORS_ORIGIN` | Extra browser origins allowed to call the API. Same-host requests are allowed. |
+| `VITE_API_BASE_URL` | Optional. Leave unset. Local Vite proxies `/api`, and the production bundle calls `/api` on the same origin. |
+| `DATA_DIR` | Writable directory for the SQLite file. Default `backend/data`. |
+| `UPLOAD_DIR` | Writable directory for resume PDFs. Default `backend/uploads`. |
 | `AI_API_KEY` | Optional. Leave empty to use the local matcher. |
 | `AI_BASE_URL` | Optional OpenAI-compatible base URL. |
 | `AI_MODEL` | Optional model name. |
@@ -124,6 +126,25 @@ Health check: `GET http://127.0.0.1:43124/api/health`
 3. Compare the four scores. Open a role under 90% and use **Improve Match**.
 4. Accept a few recommendations, then **Re-run match analysis**.
 5. When a role reaches 90%, use **Apply** to open the link, or **Mark applied**.
+
+## Deployment
+
+One process serves the built UI and the API. `npm run build` in `frontend` writes `frontend/dist`. The Express server in `backend/server.js` listens on `process.env.PORT` (local default `43124`) and, when `frontend/dist/index.html` exists, serves that build plus the existing `/api` routes. Client-side routes such as `/resume` fall back to `index.html`.
+
+The container image is the repo-root `Dockerfile`. It builds the frontend, installs the backend, and runs `node server.js` as a non-root user with `PORT=8080`. SQLite goes in `/app/data` and uploads in `/app/uploads`. Both directories are on the container disk.
+
+ECS Express Mode (the `*.ecs.us-east-1.on.aws` hostname used for this class of app) replaces that disk when a task is replaced, redeployed, or scaled. The SQLite database and uploaded PDFs are not durable. They are lost on the next new task. This project keeps SQLite on purpose and does not use RDS.
+
+Nothing in the app submits an application to an employer. Apply only opens a saved URL or records that you marked the job applied.
+
+Local production check, from the repo root after `npm install` in `frontend` and `backend`:
+
+```bash
+npm run build
+PORT=8080 npm start
+```
+
+Health: `GET /api/health` and `GET /ping`. The HTML at `/` is the Vite production build.
 
 ## Known limitations
 

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:43124/api';
+// Production is same-origin (`/api`). Local Vite proxies that path to the API.
+// Set VITE_API_BASE_URL only when the API is on a different origin.
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -12,7 +14,7 @@ export function errorMessage(error) {
   if (Array.isArray(data?.details) && data.details.length) return data.details.join(' ');
   if (data?.error) return data.error;
   if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
-    return 'Cannot reach the API. Start the backend on port 43124 and refresh.';
+    return 'Cannot reach the API. Start the backend and refresh.';
   }
   if (error?.code === 'ECONNABORTED') return 'The request timed out. Try again.';
   return 'Something went wrong. Try again.';
